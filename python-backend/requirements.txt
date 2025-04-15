@@ -6,3 +6,4 @@ livekit-plugins-silero>=0.7.4
 livekit-plugins-turn-detector
 python-dotenv~=1.0
 aiohttp>=3.11.11
+livekit
