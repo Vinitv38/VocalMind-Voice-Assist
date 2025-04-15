@@ -29,76 +29,61 @@ import {
   }
   
   export async function POST(req: Request) {
-    const { userName, agentId, userId }: RouteProps = await req.json();
-  
-    try {
-      if (LIVEKIT_URL === undefined) {
-        throw new Error("LIVEKIT_URL is not defined");
-      }
-      if (API_KEY === undefined) {
-        throw new Error("LIVEKIT_API_KEY is not defined");
-      }
-      if (API_SECRET === undefined) {
-        throw new Error("LIVEKIT_API_SECRET is not defined");
-      }
-  
-      // Generate participant token
-      const participantIdentity = `voice_assistant_user_${Math.floor(
-        Math.random() * 10_000
-      )}`;
-      const roomName = `voice_assistant_room_${Math.floor(
-        Math.random() * 10_000
-      )}`;
-  
-      // Explicitly dispatch an agent to this room.
-      // Ensure that the agent's WorkerOptions are configured with agentName = "inbound-agent"
-      const agentName = "inbound-agent";
-      const agentDispatchClient = new AgentDispatchClient(
-        LIVEKIT_URL,
-        API_KEY,
-        API_SECRET
-      );
-      const dispatchOptions = { metadata: '{"customData": "example"}' };
-  
-      // Create explicit dispatch
-      const dispatch = await agentDispatchClient.createDispatch(
-        roomName,
-        agentName,
-        dispatchOptions
-      );
-      console.log("Dispatch created:", dispatch);
-  
-      const participantToken = await createParticipantToken(
-        {
-          identity: participantIdentity,
-          name: userName,
-          attributes: {
-            agentId: agentId,
-            userId: userId,
-          },
-          metadata: "this-is-metadata",
+  const { userName, agentId, userId }: RouteProps = await req.json();
+
+  try {
+    if (!LIVEKIT_URL) throw new Error("LIVEKIT_URL is not defined");
+    if (!API_KEY) throw new Error("LIVEKIT_API_KEY is not defined");
+    if (!API_SECRET) throw new Error("LIVEKIT_API_SECRET is not defined");
+
+    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
+    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
+
+    const agentName = "inbound-agent";
+    const agentDispatchClient = new AgentDispatchClient(LIVEKIT_URL, API_KEY, API_SECRET);
+    const dispatchOptions = { metadata: '{"customData": "example"}' };
+
+    const dispatch = await agentDispatchClient.createDispatch(
+      roomName,
+      agentName,
+      dispatchOptions
+    );
+    console.log("Dispatch created:", dispatch);
+
+    const participantToken = await createParticipantToken(
+      {
+        identity: participantIdentity,
+        name: userName,
+        attributes: {
+          agentId,
+          userId,
         },
-        roomName
-      );
-  
-      // Return connection details
-      const data: ConnectionDetails = {
-        serverUrl: LIVEKIT_URL,
-        roomName,
-        participantToken: participantToken,
-        participantName: participantIdentity,
-      };
-      const headers = new Headers({
-        "Cache-Control": "no-store",
-      });
-      return NextResponse.json(data, { headers });
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(error);
-        return new NextResponse(error.message, { status: 500 });
+        metadata: "this-is-metadata",
+      },
+      roomName
+    );
+
+    const data: ConnectionDetails = {
+      serverUrl: LIVEKIT_URL,
+      roomName,
+      participantToken,
+      participantName: participantIdentity,
+    };
+
+    return NextResponse.json(data, {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return new NextResponse(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
       }
-    }
+    );
   }
+}
   
   function createParticipantToken(
     userInfo: AccessTokenOptions,
